@@ -8,7 +8,7 @@ Captions are checked before publish against an editable rule set in `rules.json`
 - **Errors block publish.** The publish guard runs lint before each lane fires and drops any lane whose caption trips an error-severity rule (it logs a `lint-blocked` activity entry and ships nothing for that lane). Approval does not run lint, so run `brand_lint` first and fix every error before you approve: that is the operator or agent invoked check, and the publish guard is the backstop.
 - **Warns are advisory.**
 
-`brand_lint` is both an MCP tool (see [MCP](/mcp)) and the lint panel in the dashboard composer, so you get the same check whether you draft from an agent or from the UI.
+`brand_lint` is both an MCP tool (see [MCP](/mcp-server)) and the lint panel in the dashboard composer, so you get the same check whether you draft from an agent or from the UI.
 
 ## The rules.json schema
 

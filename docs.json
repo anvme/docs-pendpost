@@ -51,7 +51,7 @@
           {
             "group": "Interfaces",
             "pages": [
-              "mcp"
+              "mcp-server"
             ]
           },
           {

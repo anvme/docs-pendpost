@@ -23,7 +23,7 @@ The language is a per-client posting setting called `locale` (a BCP-47 tag, defa
     Open **Setup**, find the **Language** section, and choose your **Posting language**. The setting takes effect immediately. The hint sums it up: the language for the dashboard copy and the digest, with English as the safe baseline.
   </Tab>
   <Tab title="Config">
-    `locale` lives in your `config.json` posting config. It is a non-secret value, so you can set it through the normal config write path (`config_set` over MCP (see [MCP](/mcp)), or `POST /api/config` over REST):
+    `locale` lives in your `config.json` posting config. It is a non-secret value, so you can set it through the normal config write path (`config_set` over MCP (see [MCP](/mcp-server)), or `POST /api/config` over REST):
 
     ```json
     { "posting": { "locale": "de-CH" } }

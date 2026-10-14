@@ -59,7 +59,7 @@ From an agent, pause or resume over MCP instead of hand-editing the file: `meta_
 
 ## From an agent (MCP)
 
-A headless agent does not edit JSON by hand. The same breakers are readable and operable over the MCP face (see [MCP](/mcp)), with the owner still in control of the dangerous half.
+A headless agent does not edit JSON by hand. The same breakers are readable and operable over the MCP face (see [MCP](/mcp-server)), with the owner still in control of the dangerous half.
 
 - **Read the state.** `pendpost_health` is the one-call readiness check. It returns `{ ready, blockers[], schedulerRunning, nextDue[] }`, where `blockers[]` surfaces the 368 block and lane readiness and `nextDue[]` lists the next due posts (a post deferred only by the cadence cap still appears there: throttled, not failed). It is read-only.
 - **Record a block.** `pendpost_record_block` records a 368 (the engines call it on a Meta 368, and an agent can record one too), client-scoped with an optional `clientId`.

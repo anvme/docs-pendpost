@@ -70,7 +70,7 @@ Mock runs do not exercise rate limits, native scheduling, or the Meta 368 breake
 
 ## Drive it headless
 
-The same `npx pendpost` (or `npm start`) boot also exposes the MCP server, so an agent can run onboarding without the dashboard. Connect an MCP client, call `pendpost_health` to confirm readiness, then `plan_list` to read the workspace (a fresh install shows the example Acme Launch campaign), then `campaign_create` to start your own. See [MCP](/mcp) to connect a client.
+The same `npx pendpost` (or `npm start`) boot also exposes the MCP server, so an agent can run onboarding without the dashboard. Connect an MCP client, call `pendpost_health` to confirm readiness, then `plan_list` to read the workspace (a fresh install shows the example Acme Launch campaign), then `campaign_create` to start your own. See [MCP](/mcp-server) to connect a client.
 
 <Note>
 pendpost binds `127.0.0.1` (loopback) by default. The docker image binds `0.0.0.0` inside the container, but docker compose still maps the port to loopback on your host only.
