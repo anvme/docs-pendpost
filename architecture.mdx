@@ -1,0 +1,75 @@
+---
+title: Architecture
+description: One zero-dependency process, four faces, four publish engines, and local JSON plan and state.
+---
+
+pendpost is one zero-dependency Node process (`server.mjs`). The server has no runtime dependencies; everything it needs is in the standard library and your local files.
+
+## Four faces
+
+The single process serves four faces on the same port:
+
+<CardGroup cols={2}>
+  <Card title="REST" icon="server">
+    `/api` is the REST face the dashboard talks to.
+  </Card>
+  <Card title="MCP" icon="plug">
+    `/mcp` is the MCP face: streamable-HTTP, JSON-RPC 2.0, dozens of tools. See [MCP clients](/mcp).
+  </Card>
+  <Card title="Media" icon="film">
+    `/media` does range streaming of local files under `data/`.
+  </Card>
+  <Card title="Dashboard" icon="layout-dashboard">
+    `/` serves the built React dashboard from `app/dist`.
+  </Card>
+</CardGroup>
+
+The REST face and the MCP face drive the same contract, enforced by a parity test.
+
+## Backend logic
+
+The backend logic lives in `lib/*.mjs`. The process binds `127.0.0.1` (loopback) by default, so nothing is exposed beyond your own machine unless you change the bind host.
+
+## The publish engines
+
+There are four publish engines in `scripts/`, one per platform family:
+
+- `meta-social.mjs` (Facebook and Instagram)
+- `linkedin-social.mjs`
+- `yt-social.mjs`
+- `x-social.mjs` (X / Twitter)
+
+Each engine is spawned as a subprocess on a scheduler tick or on demand. Each emits a JSON envelope describing the result, which the server reads back. Spawning each engine as its own subprocess keeps the engines isolated from the long-running server process.
+
+## Plan and state
+
+The plan and the state are local JSON.
+
+- Plans live under `data/plans`: each campaign has a `post-plan.json`, the manifest is `active-plans.json`, and per-post covers live alongside the plan.
+- Media to publish lives under `data/media`.
+- Voiceover SRTs live under `data/captions`.
+
+The workspace root that holds `.env`, `config.json`, `state.json`, and `data/` is overridable via `PENDPOST_ROOT` (it defaults to the install directory).
+
+```
+server.mjs  (one process)
+  /api     REST face        -> lib/*.mjs
+  /mcp     MCP face (JSON-RPC 2.0)
+  /media   range streaming of data/
+  /        React dashboard (app/dist)
+
+scripts/
+  meta-social.mjs       (Facebook + Instagram)   spawned per tick / on demand
+  linkedin-social.mjs                             -> JSON envelope
+  yt-social.mjs
+  x-social.mjs          (X / Twitter)
+
+data/
+  plans/      post-plan.json + active-plans.json + covers/
+  media/      publishable renders / assets
+  captions/   voiceover SRTs
+```
+
+<Note>
+Because the server has zero runtime dependencies and binds loopback, the whole system is local-first and inspectable. There is no telemetry; nothing phones home.
+</Note>

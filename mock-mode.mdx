@@ -1,0 +1,69 @@
+---
+title: Mock mode
+description: Run the full draft to insights loop with zero credentials and zero real API calls.
+---
+
+Mock mode is the adoption unlock. A stranger can run the complete pendpost loop, draft, approve, schedule, publish, and insights, with no credentials and no real platform traffic. Nothing leaves your machine.
+
+## When mock mode is active
+
+pendpost resolves mode per platform:
+
+- **auto** (the default): a platform is live only if its credential is present in `.env`. Otherwise that lane runs in mock.
+- **forced**: set `PENDPOST_MODE=mock` to force every lane into mock regardless of credentials, or `PENDPOST_MODE=live` to require real credentials.
+
+So with no `.env` at all, every lane is in mock and you can explore freely.
+
+## What the mock driver does
+
+The mock driver (`lib/drivers/mock-driver.mjs`) stands in for the real publish engines. Instead of calling a platform API, it:
+
+- Fabricates post ids that look like real platform ids.
+- Fabricates realistic metrics so the insights view has something to show.
+- Records every action to a `.mock-ledger.json` under the active client's data root.
+
+It covers every lane: the mock driver fabricates ids and metrics for all of them, so every platform (Facebook, Instagram, LinkedIn, X, YouTube, Telegram, Discord, Mastodon, WordPress, Ghost, Nostr, Reddit, Pinterest, TikTok, and Google Business Profile) is exercisable credential-free.
+
+Because the mock driver records to the ledger, your runs are inspectable after the fact. The ledger is your audit trail for what the loop did while no real account was touched.
+
+## The full loop
+
+The same loop runs in mock and live; only the driver at the end differs. Walk it from the dashboard or from any MCP client (both drive the same contract).
+
+<Steps>
+  <Step title="Draft">
+    Create a post. Every created post starts as a `draft`. The agent tool `plan_create_post` always creates a draft, never an approved post.
+  </Step>
+  <Step title="Approve">
+    A human approves the draft with `approve_post`, flipping its approval state to `approved`. The actor who created a post cannot approve it (the owner is exempt). A post with no approval will not publish: the gate is fail-closed. You can also `reject_post`.
+  </Step>
+  <Step title="Schedule">
+    Set the post's `scheduledAt`. Where a platform supports native scheduling, pendpost uses it. In mock, the scheduler tick drives the lane just as it would live.
+  </Step>
+  <Step title="Publish">
+    On the scheduler tick (or on demand) the lane runs through the mock driver, which fabricates an id and records the publish to the ledger. No real API call is made.
+  </Step>
+  <Step title="Insights">
+    Read back the fabricated metrics the mock driver produced. This exercises the same insights path you would use with real data.
+  </Step>
+</Steps>
+
+## The example Acme campaign
+
+So that a fresh checkout shows content on first run, pendpost ships an example `Acme Launch` campaign in `data/plans`. It is registered in the manifest `data/plans/active-plans.json` and lives under `data/plans/acme-launch/post-plan.json`.
+
+The campaign includes a mix of states so you can see the gate at work right away:
+
+- A LinkedIn text post in `draft` (created by an agent, awaiting approval).
+- An Instagram and Facebook reel in `draft`.
+- An Instagram reel already `approved` by the owner, ready to publish.
+
+Everything in the example runs in mock mode: no credentials, no real posting. Delete the `acme-launch` folder and its manifest entry once you start adding your own campaigns.
+
+## The mock ledger
+
+Every mock action is appended to a `.mock-ledger.json`. On a single-client install that resolves to `data/.mock-ledger.json`; on a multi-client instance each client's data root holds its own ledger, so the audit trail stays isolated per client. This file is created at runtime and grows as you run the loop. Read it to confirm exactly what each step did, including the fabricated ids and metrics, without trusting the dashboard view alone.
+
+<Note>
+Because mock mode never touches a real account, it is the safest place to learn the approval gate, the circuit breakers, and the brand-lint flow before you add any credentials.
+</Note>

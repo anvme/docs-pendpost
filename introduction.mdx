@@ -1,0 +1,70 @@
+---
+title: Introduction
+description: What pendpost is, who it is for, and the five things that set it apart.
+---
+
+## What pendpost is
+
+pendpost is agent-operated social ops with a human approval gate. It is an operations layer for the agent-plus-human workflow, not another social scheduler. An agent (or you) drafts posts; a human approves before anything goes live. pendpost handles the planning, the scheduling, the brand checks, and the publishing engines, while keeping a person in the loop on every post that reaches a real account.
+
+It is built for developers, agencies, and technical solopreneurs who want their tooling to be local, inspectable, and scriptable rather than a hosted black box.
+
+## Positioning
+
+pendpost is the operations layer between an agent that writes and a human who decides. The agent can plan a whole campaign, but by default you approve before anything ships. Publishing is gated, rate-limited, and protected by circuit breakers so an automated workflow stays inside the bounds a person set.
+
+A note on responsible use: by default pendpost holds every post for your approval, and nothing publishes until you approve it. You can opt into auto-approve, an owner-only setting you can revoke, to let matching posts publish on their own and scale to fully hands-off. You own your own accounts and are responsible for each platform's terms of service.
+
+## Local-first by design
+
+- Zero runtime dependencies in the server.
+- Plans are local JSON you can read and edit.
+- Media is local.
+- Secrets live in your own `.env`.
+- The server binds `127.0.0.1` (loopback) by default.
+
+There is no telemetry. Nothing phones home; there is nothing to opt out of because none exists. If telemetry is ever added it will be opt-in and documented.
+
+## License and support
+
+pendpost is MIT licensed. Copyright 2026 Nomadik GmbH. It is maintained part-time by a small team, so please set your expectations on response time accordingly.
+
+## The five differentiators
+
+<CardGroup cols={1}>
+  <Card title="1. Human approval gate" icon="shield-check">
+    Every post carries an approval state (`draft`, `pending`, `approved`, or `rejected`). Both `draft` and `pending` render as the amber needs-approval status. The gate is fail-closed: a post with no approval will not publish. `plan_create_post` always creates a draft. Only `approve_post` and `reject_post` flip approval. Nothing publishes until it's approved. By default that's you; auto-approve is owner-only and revocable.
+  </Card>
+  <Card title="2. Anti-ban circuit breakers" icon="circuit-board">
+    Meta error 368 (an action block) trips a breaker that halts the Meta lane and never auto-resumes, because 368 carries no machine-readable clear time. A cadence cap defers (never drops) bursts, and a lane pause kill switch lets you stop publishing on demand.
+  </Card>
+  <Card title="3. Humanizer brand-lint" icon="spell-check">
+    Captions are checked before publish against rules in an editable `rules.json`. The humanizer layer flags English AI-writing tells. Errors block; warns are advisory.
+  </Card>
+  <Card title="4. Honest native scheduling" icon="calendar-clock">
+    Where a platform supports it (Facebook scheduled posts, YouTube `publishAt`), pendpost uses native scheduling and is honest about which cover and thumbnail mechanics actually apply per platform.
+  </Card>
+  <Card title="5. Dual interface" icon="layout-panel-left">
+    A web dashboard and any MCP client drive the same contract. A parity test enforces that every capability ships on both faces.
+  </Card>
+</CardGroup>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install via npx, git, or docker and open the dashboard.
+  </Card>
+  <Card title="Mock mode" icon="flask" href="/mock-mode">
+    Run the full loop with zero credentials.
+  </Card>
+  <Card title="MCP" icon="plug" href="/mcp">
+    Connect Claude Code or Claude Desktop, or drive onboarding headless: `pendpost_health`, then `plan_list` (a fresh install shows the example Acme Launch campaign), then `campaign_create` to start your own.
+  </Card>
+  <Card title="Architecture" icon="boxes" href="/architecture">
+    The one-process, four-faces design.
+  </Card>
+  <Card title="Localization" icon="globe" href="/localization">
+    Run the dashboard and digest in English or Swiss German (de-CH).
+  </Card>
+</CardGroup>

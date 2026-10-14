@@ -1,0 +1,80 @@
+---
+title: Always-on self-host
+description: Run pendpost where it never sleeps so Instagram, LinkedIn, X, Telegram, Discord, and Nostr publish on schedule even when your computer is off, without exposing an unauthenticated publish API.
+---
+
+pendpost is local-first: the scheduler is an in-process tick on your machine. Facebook and YouTube posts survive your computer being off because the platform itself fires them (Facebook `scheduled_publish_time`, YouTube `publishAt`), and Mastodon, WordPress, and Ghost posts survive the same way via their own native scheduling, but Instagram, LinkedIn, X, Telegram, Discord, and Nostr have no native scheduling, so pendpost must be running at the scheduled time to publish them.
+
+To close that gap for free, run pendpost on a host that never sleeps. The one rule: never put an unauthenticated publish API on the public internet.
+
+## The honest power-off split
+
+| Platform | Survives your computer being off |
+|---|---|
+| Facebook | yes (native scheduled posts) |
+| YouTube | yes (native `publishAt`) |
+| Mastodon | yes (native scheduling) |
+| WordPress | yes (native scheduling) |
+| Ghost | yes (native scheduling) |
+| Instagram | no (pendpost must be running) |
+| LinkedIn | no (pendpost must be running) |
+| X | no (pendpost must be running) |
+| Telegram | no (pendpost must be running) |
+| Discord | no (pendpost must be running) |
+| Nostr | no (pendpost must be running) |
+
+So you only need always-on hosting if you schedule Instagram, LinkedIn, X, Telegram, Discord, or Nostr.
+
+## Recommended: loopback server behind a zero-trust proxy
+
+The safest pattern keeps the pendpost server exactly as it ships, bound to loopback with no auth, and puts access control in front of it with a tunnel. Nothing about the server changes, and the publish API is never exposed.
+
+- Tailscale: run pendpost on a small always-on host (a cheap VPS, a Raspberry Pi, or a NAS) and reach it over your tailnet. Optionally use Tailscale Serve to terminate TLS on the tailnet only.
+- Cloudflare Tunnel + Access: run `cloudflared` next to pendpost pointing at `http://127.0.0.1:8090`, and put a Cloudflare Access policy (email or SSO) in front. Only authenticated people reach it; the server stays loopback-only.
+
+Because the server stays loopback-bound, its default posture is unchanged: no token, no new surface.
+
+## Containers and one-click hosts
+
+The repo ships a `Dockerfile` and `docker-compose.yml`. Compose keeps host exposure on `127.0.0.1` while the container binds `0.0.0.0` internally, so a local always-on box stays loopback-only:
+
+```bash
+docker compose up -d
+```
+
+For managed always-on platforms, copy a template from `deploy/`:
+
+- `deploy/fly.toml` for Fly.io (with a persistent volume and a health check)
+- `deploy/railway.json` for Railway
+- `deploy/render.yaml` for Render
+
+These platforms give you a public URL, so you must gate access. Use the optional in-server auth gate below, or front the service with Cloudflare Access.
+
+## Optional: the in-server auth gate
+
+When you cannot put a proxy in front, pendpost can require a bearer token itself. The gate is off by default and activates ONLY when both are true:
+
+1. `PENDPOST_HOST` is a non-loopback address (for example `0.0.0.0` or a Tailscale IP), and
+2. `PENDPOST_AUTH_TOKEN` is set.
+
+With the loopback default, the gate is always off and the local posture is byte-for-byte unchanged. When it is on, every request must carry `Authorization: Bearer <PENDPOST_AUTH_TOKEN>`, except the readiness probe `GET /api/health` so platform health checks keep working.
+
+```bash
+export PENDPOST_HOST=0.0.0.0
+export PENDPOST_AUTH_TOKEN="$(openssl rand -hex 32)"
+# the host(s) the deployment is reached at, so the host allowlist accepts them:
+export PENDPOST_PUBLIC_HOST="pendpost.example.com"
+node server.mjs
+```
+
+Drive it over the API or MCP with the token:
+
+```bash
+curl -H "Authorization: Bearer $PENDPOST_AUTH_TOKEN" https://pendpost.example.com/api/plan
+```
+
+The dashboard SPA cannot send a bearer header on its own, so when the gate is on, use the dashboard over the loopback tunnel and reserve the public URL for the API and MCP. The token is the security boundary: keep it secret, set it as a platform secret (never in a committed file), and rotate it if it leaks.
+
+## What this does not change
+
+The approval gate still holds everywhere: an always-on host only fires posts that were already approved. Nothing publishes until it's approved; by default that's you, and auto-approve is owner-only and revocable. Hosting changes where pendpost runs, never who is allowed to publish.

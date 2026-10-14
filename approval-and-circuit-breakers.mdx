@@ -1,0 +1,74 @@
+---
+title: Approval and circuit breakers
+description: The fail-closed approval gate, the Meta 368 breaker, the cadence cap, and the lane pause.
+---
+
+pendpost keeps a human in control of anything that reaches a real account. The approval gate decides what may publish at all; the circuit breakers decide whether a lane is allowed to keep publishing.
+
+## The approval gate
+
+Every post carries an approval state: `draft`, `approved`, or `rejected`.
+
+- **Fail-closed.** A post with no approval will not publish. The default is to not act.
+- **Drafts only on create.** `plan_create_post` always creates a draft. Creating a post never approves it.
+- **Approval is explicit.** Only `approve_post` and `reject_post` flip the approval state.
+- **Approval is separate from authorship.** Nothing publishes until it's approved, and by default that approver is you.
+
+This is the responsible-use posture: by default pendpost drafts and schedules while you approve before anything goes live. Opt into auto-approve, an owner-only setting you can revoke, and matching posts publish on their own, up to fully hands-off.
+
+<Warning>
+Because the gate is fail-closed, the absence of an approval is treated as "do not publish", not "publish anyway". A draft that nobody approves simply never goes out.
+</Warning>
+
+## The Meta 368 breaker
+
+Meta error 368 is an action block. When pendpost sees a 368 it trips a breaker that halts the Meta lane.
+
+- **Never auto-resumes.** Error 368 carries no machine-readable clear time, so pendpost cannot know when Meta has lifted the block. The owner must clear the breaker explicitly once Meta lifts it (see [From an agent (MCP)](#from-an-agent-mcp) for the clear call).
+- **Zero Graph traffic while blocked.** Health probes send no Graph traffic while the lane is blocked, so pendpost will not poke an already-angry endpoint.
+
+<Warning>
+Do not rely on the breaker clearing itself. After a 368, the Meta lane stays halted until you clear it by hand.
+</Warning>
+
+## The cadence cap
+
+The Meta lane has a cadence cap configured in `data/plans/meta-lane.json`:
+
+- `maxPer24h`: the maximum number of publishes in a rolling 24 hours.
+- `minGapMinutes`: the minimum gap between publishes.
+
+<Note>
+On a multi-client instance, `data/plans/meta-lane.json` is resolved per active client (in the active client's subtree, under `data/plans/`), so each project can tune its own cadence cap independently.
+</Note>
+
+When a burst would exceed the cap, pendpost **defers** the extra posts. It never drops them. They go out later, within the cadence you set.
+
+From an agent, tune the cap over MCP instead of hand-editing the file: `meta_lane_set({ actor: "owner", cadence: { maxPer24h, minGapMinutes } })` (see [From an agent (MCP)](#from-an-agent-mcp)).
+
+## The lane pause kill switch
+
+You can stop the Meta lane on demand with the lane pause kill switch:
+
+- Set `paused` in `data/plans/meta-lane.json`, or
+- Set the environment variable `META_PUBLISHING_PAUSED` to `true`.
+
+Either one pauses publishing on the lane until you turn it back off. `META_PUBLISHING_PAUSED` overrides a file or tool pause: while that env var is set, a `paused` write has no effect.
+
+From an agent, pause or resume over MCP instead of hand-editing the file: `meta_lane_set({ actor: "owner", paused: true })` or `meta_lane_set({ actor: "owner", paused: false })` (see [From an agent (MCP)](#from-an-agent-mcp)). Resuming the lane never clears a 368 block.
+
+## From an agent (MCP)
+
+A headless agent does not edit JSON by hand. The same breakers are readable and operable over the MCP face (see [MCP](/mcp)), with the owner still in control of the dangerous half.
+
+- **Read the state.** `pendpost_health` is the one-call readiness check. It returns `{ ready, blockers[], schedulerRunning, nextDue[] }`, where `blockers[]` surfaces the 368 block and lane readiness and `nextDue[]` lists the next due posts (a post deferred only by the cadence cap still appears there: throttled, not failed). It is read-only.
+- **Record a block.** `pendpost_record_block` records a 368 (the engines call it on a Meta 368, and an agent can record one too), client-scoped with an optional `clientId`.
+- **Clear a block.** Clearing is the owner's call: `pendpost_record_block({ blockedUntil: null, actor: "owner" })`, on the owner's explicit instruction once Meta has confirmed the lift out of band.
+- **A manual sweep respects the block.** `publish_due_run(confirm: true)` filters the Meta lane out exactly as a scheduler tick does, so an on-demand run cannot punch through an active 368.
+- **Tune the cadence cap or pause the lane.** `meta_lane_set({ actor: "owner", cadence: { maxPer24h, minGapMinutes } })` sets the cap; `meta_lane_set({ actor: "owner", paused: true })` or `meta_lane_set({ actor: "owner", paused: false })` stops or resumes the lane. Pass `actor` (e.g. `"owner"`, `"agent:claude"`) -- it is logged to the activity feed. `META_PUBLISHING_PAUSED` overrides a file or tool pause, and `meta_lane_set` never clears a 368 block (clear that with `pendpost_record_block`).
+
+Recording is open to an agent. Clearing is an operational discipline, not a code-enforced lock: nothing in the engine prevents a caller from clearing a block, so an agent clears one only on the owner's explicit instruction, once Meta has confirmed the lift out of band. (The no-self-approval rule above, by contrast, is enforced in code.)
+
+<Note>
+The gate, the 368 breaker, the cadence cap, and the lane pause stack. A post must be approved, the lane must not be paused, the 368 breaker must be clear, and the post must fit the cadence cap before it publishes.
+</Note>

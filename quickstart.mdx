@@ -1,0 +1,126 @@
+---
+title: Quickstart
+description: Boot pendpost in under a minute via git, npx, or docker, then open the dashboard or drive it over MCP.
+---
+
+pendpost runs as a single local process. With no credentials it starts in mock mode, so you can run the full loop right away with zero setup. Pick whichever path fits your workflow.
+
+## Install and run
+
+<Tabs>
+  <Tab title="git">
+    Clone the repository and enter it:
+
+    ```bash
+    git clone https://github.com/pendpost/pendpost.git
+    cd pendpost
+    ```
+
+    The server has zero runtime dependencies, so no root install is needed. Just start it. This builds the dashboard on first run, then boots:
+
+    ```bash
+    npm start
+    ```
+
+    Or run the binary directly. This is equivalent, the same build-on-first-run entry point:
+
+    ```bash
+    node bin/pendpost.mjs
+    ```
+
+    Then open:
+
+    ```
+    http://127.0.0.1:8090
+    ```
+  </Tab>
+  <Tab title="npx">
+    A single command boots the server and builds the dashboard on first run:
+
+    ```bash
+    npx pendpost
+    ```
+
+    When it is up, open the dashboard:
+
+    ```
+    http://127.0.0.1:8090
+    ```
+  </Tab>
+  <Tab title="docker">
+    ```bash
+    docker compose up
+    ```
+
+    The host exposure stays loopback-only. When the container is up, open:
+
+    ```
+    http://127.0.0.1:8090
+    ```
+  </Tab>
+</Tabs>
+
+## First run
+
+On first run pendpost ships an example `Acme Launch` campaign in `data/plans`, so the dashboard shows real content immediately instead of an empty screen. With no `.env` present, every platform lane runs in mock mode: no credentials, no real API calls.
+
+From the dashboard you can walk the full loop: draft a post, approve it, schedule it, watch it publish through the mock driver, and read back fabricated insights. See [Mock mode](/mock-mode) for the complete walkthrough.
+
+Mock runs do not exercise rate limits, native scheduling, or the Meta 368 breaker; those engage only on a live lane. See [Mock mode](/mock-mode) for what mock does and does not cover.
+
+## Drive it headless
+
+The same `npx pendpost` (or `npm start`) boot also exposes the MCP server, so an agent can run onboarding without the dashboard. Connect an MCP client, call `pendpost_health` to confirm readiness, then `plan_list` to read the workspace (a fresh install shows the example Acme Launch campaign), then `campaign_create` to start your own. See [MCP](/mcp) to connect a client.
+
+<Note>
+pendpost binds `127.0.0.1` (loopback) by default. The docker image binds `0.0.0.0` inside the container, but docker compose still maps the port to loopback on your host only.
+</Note>
+
+## Going live later
+
+When you are ready to publish for real, add credentials for the platforms you use in your own `.env`. A platform goes live only when its credential is present; otherwise it stays in mock mode. See:
+
+<CardGroup cols={2}>
+  <Card title="Meta" icon="facebook" href="/credentials/meta">
+    Facebook and Instagram.
+  </Card>
+  <Card title="LinkedIn" icon="linkedin" href="/credentials/linkedin">
+    Organization page posting.
+  </Card>
+  <Card title="YouTube" icon="youtube" href="/credentials/youtube">
+    Video uploads with native scheduling.
+  </Card>
+  <Card title="X (Twitter)" icon="twitter" href="/credentials/x">
+    OAuth 1.0a or 2.0 PKCE posting.
+  </Card>
+  <Card title="Telegram" icon="telegram" href="/credentials/telegram">
+    Channel posting via a bot.
+  </Card>
+  <Card title="Discord" icon="discord" href="/credentials/discord">
+    Channel posting via a webhook.
+  </Card>
+  <Card title="Reddit" icon="reddit" href="/credentials/reddit">
+    Subreddit posting (beta).
+  </Card>
+  <Card title="Pinterest" icon="pinterest" href="/credentials/pinterest">
+    Board pins (beta).
+  </Card>
+  <Card title="TikTok" icon="tiktok" href="/credentials/tiktok">
+    Video uploads (beta).
+  </Card>
+  <Card title="Mastodon" icon="mastodon" href="/credentials/mastodon">
+    Instance posting via an access token.
+  </Card>
+  <Card title="Nostr" icon="key" href="/credentials/nostr">
+    Text notes to relays (Node 22+).
+  </Card>
+  <Card title="WordPress" icon="wordpress" href="/credentials/wordpress">
+    Posts via an application password.
+  </Card>
+  <Card title="Ghost" icon="ghost" href="/credentials/ghost">
+    Posts via the Admin API.
+  </Card>
+  <Card title="Google Business Profile" icon="store" href="/credentials/gbp">
+    Local posts (beta).
+  </Card>
+</CardGroup>

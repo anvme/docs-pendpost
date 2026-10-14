@@ -1,0 +1,77 @@
+---
+title: Brand-lint
+description: The humanizer and hygiene rules, the rules.json schema, the built-in matchers, and the workspace override.
+---
+
+Captions are checked before publish against an editable rule set in `rules.json`. Brand-lint has two jobs: hygiene (catch things that read badly or break) and the humanizer layer (flag English AI-writing tells). The humanizer is a selling point, not an afterthought.
+
+- **Errors block publish.** The publish guard runs lint before each lane fires and drops any lane whose caption trips an error-severity rule (it logs a `lint-blocked` activity entry and ships nothing for that lane). Approval does not run lint, so run `brand_lint` first and fix every error before you approve: that is the operator or agent invoked check, and the publish guard is the backstop.
+- **Warns are advisory.**
+
+`brand_lint` is both an MCP tool (see [MCP](/mcp)) and the lint panel in the dashboard composer, so you get the same check whether you draft from an agent or from the UI.
+
+## The rules.json schema
+
+```json
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "string",
+      "severity": "error" | "warn",
+      "matcher": { "regex": "string", "flags": "string (optional)" } | "<builtin>",
+      "hint": "string"
+    }
+  ]
+}
+```
+
+A `regex` matcher runs against the caption text; `flags` default to `g`. A string matcher names one of the built-in matchers. Every rule carries a `hint` that tells the writer how to fix the line.
+
+## Editing, disabling, and extending rules
+
+`rules.json` is the live rule set. Edit it freely.
+
+- **Disable a rule:** delete its object. (You can also soften it by flipping `severity` from `error` to `warn`.)
+- **Add a rule:** append an object that follows the schema.
+- **Extend a rule:** change its `matcher` or `hint`.
+
+## Built-in matchers
+
+The built-in matchers are platform-aware:
+
+| Matcher | What it checks | Default severity |
+| --- | --- | --- |
+| `captionLength` | Caption is over the platform's cap and would be truncated at publish. | warn |
+| `hashtagCount` | Too many hashtags, which reads as spammy and gets down-ranked. | warn |
+| `allCaps` | Long ALL-CAPS runs that read as shouting and hurt accessibility. | warn |
+| `brokenLink` | An empty or malformed link (a bare scheme or an empty markdown link). | error |
+
+In the shipped `rules.json` only `brokenLink` is an error; the rest ship as `warn`, so an over-cap caption is flagged but does not block the lane. Soften or harden any of them by editing `severity`.
+
+## The humanizer rules
+
+The shipped default also ships humanizer regex rules that flag English AI-writing tells:
+
+| Rule id | Catches |
+| --- | --- |
+| `ai-vocab` | Classic AI vocabulary: `delve`, `leverage`, `seamless`, `synergy`, `robust`, `deep dive`, `at the heart of`, `stands as a testament`, `navigate the landscape`, `in today's fast-paced world`. |
+| `em-dash` | Em and en dash characters, a tell of AI-written copy. |
+| `negative-parallelism` | The "it's not just X, it's Y" construction. |
+| `rule-of-three` | Reflexive three-item lists used as padding. |
+| `filler-hedging` | Filler and hedging words that dilute the line. |
+| `promo-puffery` | Promotional puffery that reads like a press release. |
+
+Each humanizer rule ships as a `warn` by default, with a hint that suggests the plain-language fix.
+
+## The workspace override
+
+The shipped default `rules.json` lives at the install root. A copy at the workspace root, the `rules.json` next to your `.env`, overrides the shipped default. So you can keep your own house rules without editing the installed package: drop a `rules.json` in your workspace root and it wins.
+
+<Note>
+On a multi-client instance, `rules.json` is resolved per client (in the active client's subtree, next to its `.env`), so each project can keep its own house rules. A single-workspace `rules.json` is the fallback when a client subtree has none.
+</Note>
+
+<Note>
+The brand name `pendpost` ships its own house style in these rules, including the em and en dash rule. Your overriding `rules.json` can keep, drop, or extend any of it.
+</Note>

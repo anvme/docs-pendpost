@@ -1,0 +1,106 @@
+---
+title: MCP clients
+description: Connect Claude Code or Claude Desktop to pendpost. The dashboard and MCP share one contract.
+---
+
+pendpost exposes an MCP face so any MCP client can drive it. The MCP endpoint speaks streamable-HTTP with JSON-RPC 2.0 and serves dozens of tools. It lives at:
+
+```
+http://127.0.0.1:8090/mcp
+```
+
+The default is 8090 on 127.0.0.1; override via PENDPOST_PORT and PENDPOST_HOST environment variables.
+
+## One contract, two faces
+
+The web dashboard and any MCP client drive the same contract. A parity test enforces that every capability ships on both faces, so anything you can do in the dashboard you can do from MCP, and the reverse. This is the dual-interface differentiator: there is no second-class face.
+
+Rather than baking a tool count into this page, lean on two live sources. `node test/parity-check.mjs` statically asserts the REST and MCP faces stay in lockstep and prints the source-declared route and tool counts. To read the count from a running instance, call `tools/list` on `/mcp` (see the handshake section below) and count what comes back.
+
+## Claude Code
+
+Claude Code connects over the HTTP transport. Add pendpost with:
+
+```bash
+claude mcp add --transport http pendpost http://127.0.0.1:8090/mcp
+```
+
+## Claude Desktop
+
+The simplest path is the one-click `.mcpb` bundle. It wraps `npx -y pendpost --stdio`, which boots the in-process engine and attaches an MCP stdio transport, so there is no separate server to start and no config file to edit.
+
+If you already run the HTTP server (via `npx pendpost` or `npm start`), you can instead bridge to it with `mcp-remote`. Add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pendpost": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://127.0.0.1:8090/mcp"]
+    }
+  }
+}
+```
+
+## Any stdio client
+
+Any stdio MCP client can speak to pendpost directly:
+
+```bash
+npx -y pendpost --stdio
+```
+
+This self-boots the engine and exposes the identical tool set over stdio, so the stdio and HTTP faces stay in lockstep.
+
+## What the agent learns at handshake
+
+The protocol self-documents, so an integrating agent never has to guess the contract:
+
+<Steps>
+  <Step title="tools/list returns every schema">
+    A `tools/list` call returns each tool with its full input schema, so the agent can discover the entire surface and its arguments at runtime rather than hard-coding them.
+  </Step>
+  <Step title="The INSTRUCTIONS block ships at the handshake">
+    The `initialize` response carries an INSTRUCTIONS block that states the operating disciplines (the draft to insights lifecycle, the approval gate) and the stable error-code vocabulary, so the agent learns the rules before its first write.
+  </Step>
+  <Step title="Errors are a stable set to branch on">
+    Errors come back as `{ code, message, hint?, retryAfter? }` with stable codes the agent can branch on: for example `not_approved`, `media_missing`, `needs_confirm`, `stale_write` (re-read, merge, retry once), `in_flight` (wait `retryAfter` seconds), and `blocked_368` (Meta action block: stop, do not retry, record it via `pendpost_record_block`). Branch on `code`, not on the message text.
+  </Step>
+</Steps>
+
+## First-run setup: connect a platform over MCP
+
+pendpost self-documents its onboarding, so an agent can drive setup end to end without the dashboard. Everything runs in [mock mode](/mock-mode) until a lane is connected, so there is no pressure to configure anything before you are ready.
+
+<Steps>
+  <Step title="Read the setup field">
+    Call `pendpost_health` and read its `setup` field: a per-platform breakdown `{ status, validation, missing[], connectAction, playbook }`, plus `setup.summary` and `setup.config` (locale, timezone). For each platform that is not validated-live or skipped, open its `playbook.portalUrl` and work `playbook.steps` in order.
+  </Step>
+  <Step title="Write identifiers, hand secrets to the owner">
+    Each step names the exact env var or field it sets (`step.env` / `step.field`). A missing identifier (`kind:"identifier"`, for example a Page id or organization URN) you write with `config_set` (`set.identifiers`). A missing secret (`kind:"secret"`, a token or key) you never touch: give the owner the exact `connectAction` CLI, and they run the local ceremony that writes `.env`.
+  </Step>
+  <Step title="Validate with a live probe">
+    After the owner connects a lane, call `health_recheck{platform}`. It runs one read-only liveness probe and returns the real pass/fail (`validation.ok` + `.detail`). On failure, relay `validation.fix` and re-probe.
+  </Step>
+  <Step title="Confirm readiness">
+    `setup.ready` is true only when every platform is validated-live or explicitly skipped. A connected-but-unproven lane is not ready. Mark platforms the owner will not use with `config_set set.posting.skippedPlatforms` so the UI shows them skipped rather than incomplete.
+  </Step>
+</Steps>
+
+The dashboard Setup page reads the same `setup` field, so the two faces never disagree. Per-platform portal and scope details live under [Credentials](/credentials/meta).
+
+### Secrets never route through the agent
+
+You never read, type, paste, or write a raw secret or token. `config_set` sets non-secret identifiers only; it can never set a secret. Secrets are entered by the owner alone, in the local CLI (or the dashboard Setup page) that writes `.env` at mode `0600`. The token never passes through the agent or the chat.
+
+## Operating several clients
+
+pendpost can hold several clients on one instance. The read-only `client_list` tool enumerates the configured clients and which one is active (no secrets), and every write tool accepts an optional `clientId` to scope a single call to a specific client without changing the active context. Creating, switching, or archiving clients stays an operator-only action over REST, so an agent can target a non-active client per call but cannot change whose context is active.
+
+## The approval gate still applies
+
+MCP does not bypass the human approval gate. From an MCP client, `plan_create_post` always creates a draft, and nothing publishes until it's approved. By default that's you; auto-approve is owner-only and revocable. See [Approval and circuit breakers](/approval-and-circuit-breakers).
+
+<Note>
+The MCP endpoint binds to loopback (`127.0.0.1`) by default, same as the dashboard.
+</Note>

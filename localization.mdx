@@ -1,0 +1,51 @@
+---
+title: Localization
+description: Run pendpost in English or real Swiss German (de-CH). Set the posting language and the dashboard, digest, and notifications follow it.
+---
+
+pendpost speaks more than one language. The dashboard, the performance digest, and the macOS approval notification all render in the active locale, so a German or Swiss operator can run the whole tool natively. The machine contract stays the same in every language: the REST and MCP faces return stable keys and locale-independent bytes regardless of the active locale, so agents and integrations are never affected.
+
+## Supported languages
+
+| Locale | Language | Notes |
+| --- | --- | --- |
+| `en` | English | The baseline, and the default. |
+| `de-CH` | Deutsch (Schweiz) | Real Swiss-German orthography: the umlauts `ä`, `ö`, `ü` are used, and the eszett `ß` is never used (Swiss German writes `ss`). |
+
+English is the safe baseline. The two packs ship at full parity, so nothing in the dashboard falls back to English when you switch to `de-CH`. If you do ship a partial pack of your own, any missing key falls back to English rather than rendering blank.
+
+## Set the posting language
+
+The language is a per-client posting setting called `locale` (a BCP-47 tag, default `en`). It controls the dashboard copy, the digest, and the notification together.
+
+<Tabs>
+  <Tab title="Dashboard">
+    Open **Setup**, find the **Language** section, and choose your **Posting language**. The setting takes effect immediately. The hint sums it up: the language for the dashboard copy and the digest, with English as the safe baseline.
+  </Tab>
+  <Tab title="Config">
+    `locale` lives in your `config.json` posting config. It is a non-secret value, so you can set it through the normal config write path (`config_set` over MCP (see [MCP](/mcp)), or `POST /api/config` over REST):
+
+    ```json
+    { "posting": { "locale": "de-CH" } }
+    ```
+
+    Valid values are BCP-47 tags, for example `en` or `de-CH`.
+  </Tab>
+</Tabs>
+
+<Note>
+On a multi-client instance, `locale` is resolved per client, so each project can read in its own language while sharing one pendpost instance.
+</Note>
+
+## Dates and time
+
+When the active locale is `de-CH`, dates and times render in Swiss format: 24-hour time and `dd.MM` day-and-month, instead of American 12-hour time. This applies across the dashboard and the digest. English keeps its own date formatting.
+
+## Digest and notifications
+
+Localization is not just the dashboard. With `de-CH` active:
+
+- The performance digest (`generate_digest` over MCP, `GET /api/digest` over REST) renders its headings, metric, platform, and lane labels, and its "no metrics" line in Swiss German, with locale-aware dates.
+- The macOS approval-queue notification is localized too.
+
+Both follow the active client's posting locale. Only this human-facing output localizes; the underlying metric data and the rest of the API surface stay locale-independent so your agents always read the same stable keys.

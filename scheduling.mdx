@@ -1,0 +1,47 @@
+---
+title: Scheduling and delivery
+description: How pendpost schedules posts, the honest per-platform difference between native scheduling and publish-when-due, and what survives your computer being off.
+---
+
+pendpost schedules a post by storing its `scheduledAt` time and then publishing it at that time. How that publish actually happens, and whether it needs pendpost running, depends on the platform. pendpost is explicit about the difference rather than implying every platform behaves the same.
+
+## Two delivery modes
+
+Every targeted platform on a post falls into one of two modes.
+
+- **Native scheduling.** Facebook (`scheduled_publish_time`) and YouTube (`publishAt`) accept a future publish time directly. Mastodon (`scheduled_at`), WordPress (status `future` + `date_gmt`, fired by wp-cron), and Ghost (status `scheduled` + `published_at`) work the same way. pendpost hands the post to the platform ahead of time, and the platform fires it on schedule. This survives your computer being off, because the platform, not pendpost, does the publishing.
+- **Publish when due.** Instagram, LinkedIn, X, Telegram, Discord, and Nostr have no native future-scheduling for this kind of post. pendpost publishes them itself the moment they are due, which means pendpost has to be running at the scheduled time.
+
+The dashboard shows which mode applies. A post handed off natively reads as scheduled on the platform; a post pendpost still owes reads as scheduled in pendpost. On a mixed post (for example Facebook plus Instagram in one post) the post detail shows a per-platform delivery hint so you can see, lane by lane, what fires when your computer is off and what does not.
+
+## Every platform at a glance
+
+| Platform | Delivery | Fires with your computer off |
+| --- | --- | --- |
+| Facebook | Native (`scheduled_publish_time`) | Yes |
+| YouTube | Native (`publishAt`) | Yes |
+| Mastodon | Native (`scheduled_at`) | Yes |
+| WordPress | Native (`future` + wp-cron) | Yes |
+| Ghost | Native (`scheduled` + `published_at`) | Yes |
+| Instagram | Publish when due | No, pendpost must be running |
+| LinkedIn | Publish when due | No, pendpost must be running |
+| X | Publish when due | No, pendpost must be running |
+| Telegram | Publish when due | No, pendpost must be running |
+| Discord | Publish when due | No, pendpost must be running |
+| Nostr | Publish when due | No, pendpost must be running |
+| Pinterest (beta) | Publish when due | No, pendpost must be running |
+| Reddit (beta) | Publish when due, local only | No, pendpost must be running |
+| TikTok (beta) | Publish when due, local only | No, pendpost must be running |
+| Google Business Profile (beta) | Publish when due, local only | No, pendpost must be running |
+
+Reddit, TikTok, and Google Business Profile are local only on every plan: their platform terms keep an unaudited app's posting on your own machine, so the paid cloud never fires them for you. Everything in the publish-when-due rows can run around the clock if you host pendpost on an always-on machine, covered next.
+
+## The scheduler
+
+When pendpost is running with the scheduler on, it walks your approved, due posts on a short recurring tick and publishes the lanes that are due. The gate still holds: only an approved post publishes. Nothing publishes until it's approved; by default that's you, and auto-approve is owner-only and revocable. A post with no approval never publishes, no matter how its time passes.
+
+Facebook, YouTube, Mastodon, WordPress, and Ghost are handed off ahead of their due time. Instagram, LinkedIn, X, Telegram, Discord, and Nostr are published when they come due, so the scheduler has to be running then.
+
+## Publishing when your computer is off
+
+If you schedule Instagram, LinkedIn, X, Telegram, Discord, or Nostr and want them to publish even when your computer is off, run pendpost on a host that never sleeps. See [always-on self-host](/always-on) for the secure pattern: keep the server loopback-only behind a private tunnel, or set the optional auth token when you bind it to a public host. Facebook, YouTube, Mastodon, WordPress, and Ghost already fire on time without it, because they schedule natively.
