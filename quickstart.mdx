@@ -57,6 +57,8 @@ pendpost runs as a single local process. With no credentials it starts in mock m
     ```
     http://127.0.0.1:8090
     ```
+
+    Mapped a different host port, such as `32114:8090`? Set `PENDPOST_ALLOWED_HOSTS=localhost:32114,127.0.0.1:32114`, or requests return `421 host not allowed`. See [Always-on](/always-on#mapping-a-different-host-port).
   </Tab>
 </Tabs>
 

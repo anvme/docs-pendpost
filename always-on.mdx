@@ -42,6 +42,18 @@ The repo ships a `Dockerfile` and `docker-compose.yml`. Compose keeps host expos
 docker compose up -d
 ```
 
+### Mapping a different host port
+
+pendpost only answers to Host headers it knows, which protects against DNS rebinding. By default those are `127.0.0.1` and `localhost` on the port it binds. If you map the container to a different host port, for example `127.0.0.1:32114:8090`, list the address you browse to in `PENDPOST_ALLOWED_HOSTS`. Otherwise every request returns `421 host not allowed`:
+
+```yaml
+environment:
+  PENDPOST_HOST: "0.0.0.0"
+  PENDPOST_ALLOWED_HOSTS: "localhost:32114,127.0.0.1:32114"
+```
+
+`PENDPOST_ALLOWED_HOSTS` is a comma-list of exact `host[:port]` entries. It applies whether the auth gate below is on or off. Wildcards are ignored, and any host you did not list is still refused.
+
 For managed always-on platforms, copy a template from `deploy/`:
 
 - `deploy/fly.toml` for Fly.io (with a persistent volume and a health check)
@@ -62,7 +74,8 @@ With the loopback default, the gate is always off and the local posture is byte-
 ```bash
 export PENDPOST_HOST=0.0.0.0
 export PENDPOST_AUTH_TOKEN="$(openssl rand -hex 32)"
-# the host(s) the deployment is reached at, so the host allowlist accepts them:
+# the host(s) the deployment is reached at, so the host allowlist accepts them
+# (only while the gate is on; use PENDPOST_ALLOWED_HOSTS for a gate-off host):
 export PENDPOST_PUBLIC_HOST="pendpost.example.com"
 node server.mjs
 ```
